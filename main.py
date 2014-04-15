@@ -1,37 +1,33 @@
 import sys
 import mixer
-import files
-import sounds
+import audio
 import server
 import threading
 
 import pygame
 from pygame.locals import *
 
-def cb(command, id):
-	seq.command(id, command)
-
 try:
-	# load lists of sounds
-	if len(sys.argv) > 1:
-		dir = sys.argv[1]
-	else:
-		dir = 'sounds'
+	# load config file
+	if len(sys.argv) <= 1:
+		sys.exit("Usage: {} <config.json>".format(sys.argv[0]))
 	
-	sound_files = files.list(dir)
+	# create sequencer
+	seq = audio.sequencer()
 	
-	# load sounds into sequencer
-	seq = sounds.sequencer()
-	seq.load(sound_files)
+	# load config into sequencer
+	configfile = sys.argv[1]
+	seq.setup(configfile)
 	
 	# create server
 	ser = server.server()
+	
 	# run on new thread
-	t = threading.Thread(target=ser.listen, args=(9988, cb))
+	t = threading.Thread(target=ser.listen, args=(9988, seq.command))
 	t.daemon = True
 	t.start()
 	
-	# now run
+	# start sequencer running
 	seq.run()
 	
 except KeyboardInterrupt:

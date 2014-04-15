@@ -7,6 +7,7 @@
 
 import re
 import time
+import json
 import random
 import os.path
 import subprocess
@@ -25,7 +26,7 @@ class sound:
 		self._id        = id
 		
 		# check format is correct - wav, 44khz, 16bit
-		converted = re.sub('([a-z0-9A-Z\-_]+)\-([0-9]+)-(loop|[0-9]+)\.[a-z0-9A-Z]+', r'converted/\1-\2-\3.wav', os.path.basename(filename))
+		converted = re.sub('(.+)\.[a-z0-9A-Z]+', r'converted/\1.wav', os.path.basename(filename))
 		
 		# convert if required
 		if os.path.isfile(converted) == False:
@@ -37,10 +38,13 @@ class sound:
 		self._length = self._sound.get_length()
 		self._sound.set_volume(float(volume) / 100)
 		
-		print 'new sound(id:{}, len:{}, loop:{}, freq:{})'.format(self._id, self._length, self._loop, self._frequency)
+		# print '{}: {} ({}s)'.format(self._id, filename, self._length)
+	
+	def id(self):
+		return self._id
 	
 	def play(self):
-		print 'play: {}'.format(self._id)
+		# print 'play: {}'.format(self._id)
 		self._playing = True
 		self._started_at = time.time()
 		if self._loop:
@@ -49,14 +53,29 @@ class sound:
 			self._sound.play()
 	
 	def stop(self):
-		print 'stop: {}'.format(self._id)
+		# print 'stop: {}'.format(self._id)
 		self._sound.stop()
 		self._playing = False
 	
+	def loop(self, enable):
+		self._loop = enable
+		if enable == True:
+			self._frequency = 0
+	
+	def freq(self, freq):
+		self._frequency = freq
+		self._loop = False
+	
+	def vol(self, vol):
+		self._sound.set_volume(float(vol) / 100)
+	
 	def play_if_required(self):
+		if self._frequency == 0 and self._loop == False:
+			return
+		
 		if self._next_play == 0 and self._frequency > 0:
 			self._next_play = time.time() + random.uniform(2, 10 / self._frequency)
-			print 'Next play of {} in {}s'.format(self._id, int(self._next_play - time.time()))
+			# print 'Next play of {} in {}s'.format(self._id, int(self._next_play - time.time()))
 		
 		if self._next_play <= time.time() and self.is_playing() == False:
 			self.play()
@@ -76,47 +95,55 @@ class sound:
 		else:
 			return True
 
+
 class sequencer:
-	_channels = []
+	_channels = {}
 	
 	def __init__(self):
 		pygame.mixer.init(44100, -16, 2, 2048)
 	
-	def load(self, files):
-		# look at file name to work out what to do?
-		for filename in files:
-			match = re.match('([a-z0-9A-Z\-_]+)\-([0-9]+)-(loop|[0-9]+)\.[a-z0-9A-Z]+', os.path.basename(filename))
-			if match:
-				name, volume, loop = match.groups()
-				if loop == 'loop':
-					frequency = 0
-					loop = True
-				else:
-					frequency = loop
-					loop = False
-				
-				self.add(name, filename, volume, loop, frequency)
-			else:
-				print 'could not extract data from {}'.format(filename)
+	def setup(self, configfile):
+		# load config file
+		fp = open(configfile)
+		config = json.load(fp)
+		fp.close()
+		
+		# turn config into sounds
+		for sound in config['sounds']:
+			self.add(sound['id'], sound['filename'], sound['volume'], sound['loop'], sound['frequency'])
 	
-	def add(self, name, filename, volume, loop, frequency):
+	def add(self, id, filename, volume, loop, frequency):
+		# adjust freq if looping
 		if loop:
 			frequency = 0
-		self._channels.append(sound(name, filename, volume, loop, frequency))
+		# check not double assigning
+		id = str(id)
+		if self._channels.has_key(id) == False:
+			self._channels[id] = sound(os.path.basename(filename), filename, volume, loop, frequency)
+			print "{}: {}".format(id, os.path.basename(filename))
+		else:
+			print "Error loading {} as id {} is already taken by {}".format(filename, id, self._channels[id].id())
 	
-	def channels(self):
-		for sound in self._channels:
-			print sound
-	
-	def command(self, id, action):
+	def command(self, action, id, val):
+		id = str(id)
+		if self._channels.has_key(id) == False:
+			print "{}: {} - no such index".format(action, id)
+			return False
 		sound = self._channels[id]
+		
 		if action == 'play':
 			sound.play()
 		if action == 'stop':
 			sound.stop()
+		if action == 'loop':
+			sound.loop(bool(val))
+		if action == 'vol':
+			sound.vol(int(val))
+		if action == 'freq':
+			sound.freq(int(val))
 	
 	def run(self):
 		while True:
 			for sound in self._channels:
-				sound.play_if_required()
+				self._channels[sound].play_if_required()
 			time.sleep(0.5)
