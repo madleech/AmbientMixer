@@ -18,14 +18,26 @@ class sound:
 	_next_play = 0
 	_playing = False
 	_started_at = 0
+	_volume = 0
+	_frequency = 0
 	
 	def __init__(self, id, filename, volume, loop, frequency):
 		# properties
-		self._loop      = bool(loop)
-		self._frequency = float(frequency) / 100
-		self._id        = id
+		self._id = id
 		
-		# check format is correct - wav, 44khz, 16bit
+		self._filename = self.convert(filename)
+		
+		# file converted, load into pygame sound
+		self._sound = pygame.mixer.Sound(self._filename)
+		self._length = self._sound.get_length()
+		self.vol(volume)
+		self.loop(loop)
+		self.freq(frequency)
+	
+	# MANAGE
+	
+	# check format is correct - wav, 44khz, 16bit
+	def convert(self, filename):
 		converted = re.sub('(.+)\.[a-z0-9A-Z]+', r'converted/\1.wav', os.path.basename(filename))
 		
 		# convert if required
@@ -33,21 +45,30 @@ class sound:
 			print 'converting {} to standard format'.format(filename)
 			subprocess.call(['sox', filename, '-b 16', '-r 44k', converted])
 		
-		# file converted, load into pygame sound
-		self._sound = pygame.mixer.Sound(converted)
-		self._length = self._sound.get_length()
-		self._sound.set_volume(float(volume) / 100)
-		
-		# print '{}: {} ({}s)'.format(self._id, filename, self._length)
+		return converted
+	
+	# ACCESS / CONFIG
 	
 	def id(self):
 		return self._id
+	
+	def get_config(self):
+		return {
+			"name": self._id,
+			"filename": self._filename,
+			"volume": int(self._volume * 100),
+			"frequency": int(self._frequency * 100),
+			"loop": self._loop			
+		}
+	
+	# CONTROL
 	
 	def play(self):
 		# print 'play: {}'.format(self._id)
 		self._playing = True
 		self._started_at = time.time()
 		if self._loop:
+			self._frequency = 0
 			self._sound.play(-1)
 		else:
 			self._sound.play()
@@ -56,21 +77,30 @@ class sound:
 		# print 'stop: {}'.format(self._id)
 		self._sound.stop()
 		self._playing = False
+		if self._loop == True:
+			self._frequency = -1
 	
 	def loop(self, enable):
-		self._loop = enable
-		if enable == True:
+		self._loop = bool(enable)
+		if self._loop == True:
 			self._frequency = 0
 	
 	def freq(self, freq):
-		self._frequency = freq
+		self._frequency = float(freq) / 100
 		self._loop = False
 	
 	def vol(self, vol):
-		self._sound.set_volume(float(vol) / 100)
+		self._volume = float(vol) / 100
+		self._sound.set_volume(self._volume)
+	
+	# INTERNAL STATE
 	
 	def play_if_required(self):
 		if self._frequency == 0 and self._loop == False:
+			return
+		
+		# ignore stopped looping sounds
+		if self._frequency < 0 and self._loop == True:
 			return
 		
 		if self._next_play == 0 and self._frequency > 0:
@@ -96,8 +126,72 @@ class sound:
 			return True
 
 
+class music:
+	_enabled = True
+	_volume = 0
+	
+	def __init__(self, id, filename, volume):
+		# properties
+		self._filename = self.convert(filename)
+		self._id = id
+		
+		# file converted, load into pygame sound
+		pygame.mixer.music.load(self._filename)
+		self.vol(volume)
+	
+	# MANAGE
+	
+	# check format is correct - ogg
+	def convert(self, filename):
+		converted = re.sub('(.+)\.[a-z0-9A-Z]+', r'converted/\1.wav', os.path.basename(filename))
+		
+		# convert if required
+		if os.path.isfile(converted) == False:
+			print 'converting {} to standard format'.format(filename)
+			# sox sounds/twilight.mp3 -t wav - | oggenc --raw - > test.gg
+			# cmd = ['sox', filename, '-t wav', '-', 'fade 0:5 0 0:5', '|', 'oggenc', '--raw', '-', '-o', converted]
+			subprocess.call(['sox', filename, '-b 16', '-r 44k', converted])
+		
+		return converted
+	
+	# ACCESS / CONFIG
+	
+	def id(self):
+		return self._id
+	
+	def get_config(self):
+		return {
+			"name": self._id,
+			"filename": self._filename,
+			"volume": int(self._volume * 100)
+		}
+	
+	# CONTROL
+	
+	def play(self):
+		# print 'play: {}'.format(self._id)
+		pygame.mixer.music.play(-1)
+	
+	def stop(self):
+		# print 'stop: {}'.format(self._id)
+		pygame.mixer.music.fadeout(5000)
+		self._enabled = False
+	
+	def vol(self, vol):
+		self._volume = float(vol) / 100
+		pygame.mixer.music.set_volume(self._volume)
+	
+	def play_if_required(self):
+		if self.is_playing() == False and self._enabled == True:
+			self.play()
+	
+	def is_playing(self):
+		return pygame.mixer.music.get_busy()
+
+
 class sequencer:
-	_channels = {}
+	sounds = {}
+	name = None
 	
 	def __init__(self):
 		pygame.mixer.init(44100, -16, 2, 2048)
@@ -108,42 +202,66 @@ class sequencer:
 		config = json.load(fp)
 		fp.close()
 		
+		self.name = config['name']
+		
 		# turn config into sounds
 		for sound in config['sounds']:
-			self.add(sound['id'], sound['filename'], sound['volume'], sound['loop'], sound['frequency'])
+			if sound['id'] == 'music':
+				self.add_music(sound['name'], sound['filename'], sound['volume'])
+			else:
+				self.add_sound(sound['id'], sound['name'], sound['filename'], sound['volume'], sound['loop'], sound['frequency'])
 	
-	def add(self, id, filename, volume, loop, frequency):
+	def add_sound(self, id, nicename, filename, volume, loop, frequency):
 		# adjust freq if looping
 		if loop:
 			frequency = 0
 		# check not double assigning
 		id = str(id)
-		if self._channels.has_key(id) == False:
-			self._channels[id] = sound(os.path.basename(filename), filename, volume, loop, frequency)
+		if self.sounds.has_key(id) == False:
+			self.sounds[id] = sound(nicename, filename, volume, loop, frequency)
 			print "{}: {}".format(id, os.path.basename(filename))
 		else:
-			print "Error loading {} as id {} is already taken by {}".format(filename, id, self._channels[id].id())
+			print "Error loading {} as id {} is already taken by {}".format(filename, id, self.sounds[id].id())
+	
+	def add_music(self, nicename, filename, volume):
+		# check not double assigning
+		self.sounds["music"] = music(nicename, filename, volume)
+		print "music: {}".format(os.path.basename(filename))
 	
 	def command(self, action, id, val):
+		# print action, id, val
+		if action == 'dump':
+			data = {"name":self.name, "sounds":[]}
+			for id, sound in self.sounds.items():
+				snd_config = sound.get_config()
+				snd_config['id'] = id
+				data['sounds'].append(snd_config)
+			print json.dumps(data, sort_keys=True, indent=2, separators=(',', ': '))
+			return True
+		
 		id = str(id)
-		if self._channels.has_key(id) == False:
+		# map 0xFFFF to music channel
+		if (id == "65535"):
+			id = "music"
+		
+		if self.sounds.has_key(id) == False:
 			print "{}: {} - no such index".format(action, id)
 			return False
-		sound = self._channels[id]
+		sound = self.sounds[id]
 		
 		if action == 'play':
 			sound.play()
 		if action == 'stop':
 			sound.stop()
 		if action == 'loop':
-			sound.loop(bool(val))
+			sound.loop(val)
 		if action == 'vol':
-			sound.vol(int(val))
+			sound.vol(val)
 		if action == 'freq':
-			sound.freq(int(val))
+			sound.freq(val)
 	
 	def run(self):
 		while True:
-			for sound in self._channels:
-				self._channels[sound].play_if_required()
+			for sound in self.sounds:
+				self.sounds[sound].play_if_required()
 			time.sleep(0.5)

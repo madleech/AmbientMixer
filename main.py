@@ -1,4 +1,5 @@
 import sys
+import ubus
 import mixer
 import audio
 import server
@@ -20,12 +21,18 @@ try:
 	seq.setup(configfile)
 	
 	# create server
-	ser = server.server()
+	tcp_server = server.tcp_server(9988, seq.command)
+	# udp_server = server.udp_server(9999, seq.command)
+	ubus_server = ubus.ubus_listener(1, seq.command)
 	
 	# run on new thread
-	t = threading.Thread(target=ser.listen, args=(9988, seq.command))
-	t.daemon = True
-	t.start()
+	t1 = threading.Thread(target=tcp_server.listen)
+	t1.daemon = True
+	t1.start()
+
+	t2 = threading.Thread(target=ubus_server.listen)
+	t2.daemon = True
+	t2.start()
 	
 	# start sequencer running
 	seq.run()
