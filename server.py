@@ -1,78 +1,94 @@
 import re
+import sys
+import json
 import socket
 
 class tcp_server:
 	port = None
-	callback = None
+	sequencer = None
 	
-	def __init__(self, port, callback):
+	def __init__(self, port, sequencer, ubus_server):
 		self.port = port
-		self.callback = callback
+		self.sequencer = sequencer
+		self.ubus_server = ubus_server
 	
+	# listen for TCP messages and dispatch to sequencer/ubus_server
 	def listen(self):
 		sock = socket.socket()
 		sock.bind(('', self.port))
 		sock.listen(5)
-		print 'TCP server now listening on port {}'.format(self.port)
+		print 'TCP management server now listening on port {}'.format(self.port)
 		
 		while True:
-			# Establish connection with client.
+			# establish connection with client.
 			conn, addr = sock.accept()
-			data = conn.recv(4096)
+			data = self.recv(conn)
 			
-			# Close the connection with the client
+			# decode packet
+			method, target, name, args = self.decode(data)
+			
+			# dispatch to appropriate handler
+			result = self.dispatch(method, target, name, args)
+			
+			# return response, close connection with client
+			conn.send(json.dumps(result))
 			conn.close()
+	
+	# work out where to send a packet, send it there, and return result/error
+	def dispatch(self, method, target, name, args):
+		try:
+			# ensure valid
+			if not method:
+				return {"error":"Missing method"}
+			if not target:
+				return {"error":"Target method"}
+			if not args:
+				return {"error":"Missing args"}
 			
-			# Run callback
-			handle_packet(data, self.callback)
-
-
-class udp_server:
-	port = None
-	callback = None
-	
-	def __init__(self, port, callback):
-		self.port = port
-		self.callback = callback
-	
-	def listen(self):
-		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		sock.bind(('', self.port))
-		print 'UDP server now listening on port {}'.format(self.port)
+			# dispatch to ubus_server
+			if target == 'ubus':
+				if method == 'update_mapping':
+					return self.ubus_server.update_mapping(*args)
+			
+			# dispatch to sequencer
+			elif target == 'sequencer':
+				if hasattr(self.sequencer, method):
+					return getattr(self.sequencer, method)(*args)
+			
+			# dispatch to sound
+			elif target == 'sound' or target == 'background_sound':
+				if target == 'sound':
+					sound = self.sequencer.get_sound(name)
+				else:
+					sound = self.sequencer.get_background_sound(name)
+				
+				if hasattr(sound, method):
+					return getattr(sound, method)(*args)
 		
+		# catch any kind of dispatch error
+		except:
+			e = sys.exc_info()[0]
+			print e
+			return {"error", e[1]}
+	
+	# get data from socket, return as single big string
+	def recv(self, conn):
+		data = ""
 		while True:
-			# Establish connection with client.
-			data, addr = sock.recvfrom(1024)
-			
-			print 'UDP: {}'.format(data)
-			
-			# Run callback
-			handle_packet(data, self.callback)
+			bits = conn.recv(4096);
+			data += bits
+			if not bits: break
+		return data
 	
-	
-def handle_packet(data, callback):
-	packet = decode_packet(data)
-	if packet and callback:
-		command, id, val = packet
-		callback(command, id, val)
-
-def decode_packet(data):
-	match = re.match('(dump)', data)
-	if match:
-		command = match.group(1)
-		return (command, None, None)
+	# packet format: {method:<method>, target:<ubus, sequencer, sound, background_sound>, [name:sound name], args:[args]}
+	def decode(self, packet):
+		try:
+			data   = json.loads(packet)
+			method = data[method]
+			target = data[target]
+			name   = data[name] if data.has_key('name') else None
+			args   = data[args]
+		except:
+			method = target = name = args = None
 		
-	match = re.match('(play|stop) ([0-9]+)', data)
-	if match:
-		command, id = match.groups()
-		return (command, id, None)
-	
-	match = re.match('(loop) ([0-9]+) (on|off)', data)
-	if match:
-		command, id, val = match.groups()
-		return (command, id, val == 'on')
-
-	match = re.match('(freq|vol) ([0-9]+) ([0-9]+)', data)
-	if match:
-		command, id, val = match.groups()
-		return (command, id, val)
+		return (method, target, name, args)
