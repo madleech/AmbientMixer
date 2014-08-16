@@ -4,4 +4,4 @@
 
 if [ "$1" == "" ]; then usage "$0 <sound> <volume 0-100> - adjusts volume of the specified sound"; fi
 
-send "sound" "vol" $1 $2
+send "sound" "vol" "$1" $2

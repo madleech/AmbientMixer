@@ -1,3 +1,4 @@
+import cgi
 import sys
 import json
 import logging
@@ -7,18 +8,48 @@ import BaseHTTPServer
 # decode HTTP posts
 class PostHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 	def do_POST(self):
-		# get posted data
-		content_len = int(self.headers.getheader('content-length', 0))
-		data = self.rfile.read(content_len)
+		# is this a multi-part post?
+		if self.headers['Content-Type'].find('multipart/form-data') > -1:
+			form = cgi.FieldStorage(
+				fp=self.rfile, 
+				headers=self.headers,
+				environ={
+					'REQUEST_METHOD':'POST',
+					'CONTENT_TYPE':self.headers['Content-Type'],
+				}
+			)
+			
+			# get JSON
+			json_data = form['json'].value
+			
+			# is a file upload too?
+			if (form.has_key('file') and form['file'].filename):
+				# place file into sounds/ under its filename
+				filename = "sounds/" + form['file'].filename
+				print "File uploaded to {}".format(filename)
+				fp = open(filename, 'wb')
+				while True:
+					chunk = form['file'].file.read(8192)
+					if len(chunk) == 0:
+						break
+					else:
+						fp.write(chunk)
+				fp.close()
+		
+		# not a form style post, so just get raw data
+		else:
+			# get JSON
+			content_len = int(self.headers.getheader('content-length', 0))
+			json_data = self.rfile.read(content_len)
 		
 		# begin response
 		self.send_response(200)
 		self.end_headers()
 		
-		print data
+		print json_data
 		
 		# decode packet
-		target, method, name, args = self.server.decode(data)
+		target, method, name, args = self.server.decode(json_data)
 		
 		# dispatch to appropriate handler
 		result = self.server.dispatch(target, method, name, args)

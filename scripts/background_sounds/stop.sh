@@ -4,4 +4,4 @@
 
 if [ "$1" == "" ]; then usage "$0 <sound> - stops the specified sound"; fi
 
-send "background_sound" "stop" $1
+send "background_sound" "stop" "$1"
