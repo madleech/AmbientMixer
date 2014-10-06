@@ -1,6 +1,12 @@
 import re
 import socket
 
+NONE = 0x00 # no result
+ACON = 0x90	# accessory on
+ACOF = 0x91	# accessory off
+ASON = 0x98	# short accessory on
+ASOF = 0x99	# short accessory off
+
 class ubus_listener:
 	port = 5550
 	sequencer = None
@@ -37,10 +43,27 @@ class ubus_listener:
 			return self.mappings[key]["sound"]
 	
 	# listen for UBUS packets and dispatch to sequencer
-	def listen(self):
+	def listen_udp(self):
 		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		sock.bind(('', self.port))
 		print 'UDP UBUS listening on port {}'.format(self.port)
+		
+		while True:
+			# establish connection with client.
+			packet, addr = sock.recvfrom(1024)
+			
+			# decode packet
+			action, node, event = self.decode(packet)
+			
+			# dispatch to sequencer
+			if action:
+				self.dispatch(action, node, event)
+	
+	# listen for UBUS packets and dispatch to sequencer
+	def listen_tcp(self):
+		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		sock.connect(('localhost', self.port))
+		print 'TCP UBUS connected to localhost on port {}'.format(self.port)
 		
 		while True:
 			# establish connection with client.
@@ -123,6 +146,33 @@ class ubus_listener:
 		# no match
 		else:
 			return None
+
+
+# convert "1234" to 0x4660
+# convert "0x1234" to 0x1234
+# convert 1234 to 0x4660
+def a_to_double(anything):
+	if isinstance(anything, int):
+		return anything
+	else:
+		return int(anything, 16)
+
+# 90, [0x0001, 0x0203] -> :SBFE0N9000010203;
+def format_packet(opcode, data):
+	packet = ":SBFE0N"
+	packet += '%02x'%opcode
+	packet += "".join('%04x'%a_to_double(double) for double in data)
+	packet += ";"
+	return packet
+
+def send(data):
+	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+	sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+	sock.sendto(data, ('255.255.255.255', 5550))
+	sock.close()
+	print " -> {}".format(data)
+
 
 # split a string into doubles
 # ie "FFAA0011" => [0xFFAA, 0x0011]

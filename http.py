@@ -55,7 +55,7 @@ class PostHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		result = self.server.dispatch(target, method, name, args)
 		
 		# return response, close connection with client
-		self.wfile.write(json.dumps(result))
+		self.wfile.write(json.dumps(result, sort_keys=True, indent=4, separators=(',', ': ')))
 	
 	def log_message(self, format, *args):
 		return
@@ -66,10 +66,11 @@ class http_server:
 	sequencer = None
 	ubus_server = None
 	
-	def __init__(self, port, sequencer, ubus_server):
+	def __init__(self, port, sequencer, ubus_server, config_manager):
 		self.port = port
 		self.sequencer = sequencer
 		self.ubus_server = ubus_server
+		self.config_manager = config_manager
 	
 	def listen(self):
 		server = BaseHTTPServer.HTTPServer(('localhost', self.port), PostHandler)
@@ -102,6 +103,11 @@ class http_server:
 				return {"error":"Missing method"}
 			if not target:
 				return {"error":"Target method"}
+			
+			# dispatch to config manager
+			if target == 'config':
+				if hasattr(self.config_manager, method):
+					return getattr(self.config_manager, method)(*args)			
 			
 			# dispatch to ubus_server
 			if target == 'ubus':

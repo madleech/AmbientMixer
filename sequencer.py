@@ -13,14 +13,15 @@ class sequencer:
 	# load in each defined sound
 	def setup_sounds(self, sounds):
 		for sound in sounds:
-			self.sounds[sound['name']] = audio.sound(sound['name'], sound['filename'], sound['volume'], sound['loop'], sound['frequency'])
-			#print "{}: {}".format(sound['name'], os.path.basename(filename))
+			if sound.has_key('filenames'):
+				self.sounds[sound['name']] = audio.related_sounds(sound['name'], sound['filenames'], sound['volume'], sound['loop'], sound['frequency'])
+			else:
+				self.sounds[sound['name']] = audio.sound(sound['name'], sound['filename'], sound['volume'], sound['loop'], sound['frequency'])
 	
 	# load in each backgound sound file
 	def setup_background_sounds(self, sounds):
 		for sound in sounds:
 			self.background_sounds[sound['name']] = audio.background_sound(sound['name'], sound['filename'], sound['volume'])
-			#print "{}: {}".format(sound['name'], os.path.basename(filename))
 	
 	def has_sound(self, name):
 		return self.sounds.has_key(name)
@@ -33,7 +34,7 @@ class sequencer:
 			return None
 		else:
 			return self.sounds[name]
-	
+		
 	def get_background_sound(self, name):
 		if not self.has_background_sound(name):
 			return None
@@ -52,21 +53,22 @@ class sequencer:
 	def run(self):
 		while True:
 			# pause so we don't use 100% CPU
-			adjustment = self.sleep(0.5)
-			if adjustment > 0:
-				# delay next play of sounds to account for slip in clock
-				for sound in self.sounds:
-					self.sounds[sound].delay_by(adjustment)
+			adjustment = sleep(0.5)
 			for sound in self.sounds:
-				self.sounds[sound].play_if_required()
+				if adjustment > 0:
+				# delay next play of sounds to account for slip in clock
+					self.sounds[sound].delay_by(adjustment)
+				else:
+					self.sounds[sound].play_if_required()
+
 	
-	# detect if computer has paused for a long time
-	def sleep(self, delay):
-		start = time.time()
-		time.sleep(delay)
-		end = time.time()
-		# slept for longer than expected?
-		slip = int(end - start)
-		if (slip > 0):
-			print "Time slipped by {}".format(slip)
-		return slip
+# detect if computer has paused for a long time
+def sleep(delay):
+	start = time.time()
+	time.sleep(delay)
+	end = time.time()
+	# slept for longer than expected?
+	slip = int(end - start)
+	if (slip > 0):
+		print "Time slipped by {}".format(slip)
+	return slip
