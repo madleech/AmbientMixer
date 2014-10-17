@@ -1,0 +1,23 @@
+{
+	"name": "Test",
+	"sounds": [
+		{"name": "birds", "filename": "test/birds-loop.mp3", "loop": true, "frequency": 0, "volume": 100},
+		{"name": "crow", "filename": "test/crow.mp3", "loop": false, "frequency": 1, "volume": 100},
+		{"name": "crested hawk", "filename": "sounds/crested-hawk.mp3", "loop": false, "frequency": 1, "volume": 100},
+		{"name": "morepork", "filename": "sounds/morepork.mp3", "loop": false, "frequency": 0, "volume": 100},
+		{"name": "bell bird", "filenames": ["sounds/bell bird/BIRDBellbirdForestHanmerCU.1_JD.mp3", "sounds/bell bird/XC112821-BELLBIR_N Z s(Ulva.CB)12.mp3", "sounds/bell bird/XC114335-Bellbird, New Zealand.mp3", "sounds/bell bird/XC152939-2013100218_1332_Anthornis melanura_M_F deroussen.mp3"], "loop": true, "frequency": 0, "volume": 100},
+		
+		{"name": "horn", "filenames": ["sounds/horns/1.wav", "sounds/horns/2.wav", "sounds/horns/3.wav"], "loop": false, "frequency": 0, "volume": 100},
+		{"name": "crossing", "filename": "sounds/crossing.wav", "loop": true, "frequency": -100, "volume": 100}
+	],
+	"background_sounds": [
+		{"name": "twilight", "filename": "sounds/twilight.mp3", "volume": 100},
+		{"name": "midnight serenade", "filename": "sounds/31_Midnight_Serenade.mp3", "volume": 100},
+		{"name": "crickets and wolves", "filename": "sounds/29_Crickets_And_Wolves.mp3", "volume": 100}
+	],
+	"ubus_mappings": [
+		{"node":1, "event":1, "sound":"crow"},
+		{"node":1, "event":2, "sound":"morepork"},
+		{"node":2, "event":1, "sound":"crested hawk"}
+	]
+}
