@@ -2,8 +2,8 @@ import re
 import socket
 
 NONE = 0x00 # no result
-ACON = 0x90	# accessory on
-ACOF = 0x91	# accessory off
+ACON = 0x40	# accessory on
+ACOF = 0x41	# accessory off
 ASON = 0x98	# short accessory on
 ASOF = 0x99	# short accessory off
 
@@ -80,7 +80,7 @@ class ubus_listener:
 	def dispatch(self, action, node, event):
 		sound_name = self.sound_name_for_event(node, event)
 		if not sound_name:
-			print "No mapping for node {}, event {}".format(node, event)
+			# print "No mapping for node {}, event {}".format(node, event)
 			return
 		
 		sound = self.sequencer.get_sound(sound_name)
@@ -109,27 +109,27 @@ class ubus_listener:
 	def decode(self, packet):
 		# ACON - <90><node byte 1><node 2><event number 1><event number 2>
 		# decode as PLAY <event number = channel>
-		match = self.match(packet, 0x90)
+		match = self.match(packet, ACON)
 		if match:
 			return ("play", match[0], match[1])
 		
 		# ACOF - <91><node byte 1><node 2><event number 1><event number 2>
 		# decode as STOP <event number = channel>
-		match = self.match(packet, 0x91)
+		match = self.match(packet, ACOF)
 		if match:
 			return ("stop", match[0], match[1])
 		
 		# ASON - <98><node byte 1><node 2><device number 1><device number 2>
 		# decode as PLAY <device number = channel>
-		match = self.match(packet, 0x98)
-		if match:
-			return ("play", match[0], match[1])
+		# match = self.match(packet, ASON)
+		# if match:
+		# 	return ("play", match[0], match[1])
 		
 		# ASOF - <99><node byte 1><node 2><device number 1><device number 2>
 		# decode as STOP <device number = channel>
-		match = self.match(packet, 0x99)
-		if match:
-			return ("stop", match[0], match[1])
+		# match = self.match(packet, ASOF)
+		# if match:
+		# 	return ("stop", match[0], match[1])
 		
 		# default
 		return (None, None, None)
@@ -140,9 +140,9 @@ class ubus_listener:
 		opcode = '%02x'%opcode
 		prefix = ''.join('%04x'%i for i in prefixes)
 		# build regex and search for matching data
-		match = re.match(':S[A-F0-9]{4}N'+opcode+prefix+'(([A-F0-9]{2})*);', data)
+		match = re.match('U'+opcode+prefix+'([A-F0-9]{2})(([A-F0-9]{2})*)', data)
 		if match:
-			return _split_into_doubles(match.group(1))
+			return _split_into_chunks(match.group(1), n=2) + _split_into_chunks(match.group(2))
 		# no match
 		else:
 			return None
@@ -157,13 +157,17 @@ def a_to_double(anything):
 	else:
 		return int(anything, 16)
 
+def a_to_double_bytes(anything):
+	if isinstance(anything, int) == False:
+		anything = int(anything, 16)
+	return [anything >> 8, anything & 0xFF]
+
 # 90, [0x0001, 0x0203] -> :SBFE0N9000010203;
 def format_packet(opcode, data):
-	packet = ":SBFE0N"
+	packet = "U"
 	packet += '%02x'%opcode
-	packet += "".join('%04x'%a_to_double(double) for double in data)
-	packet += ";"
-	return packet
+	packet += "".join('%02x'%a_to_double(byte) for byte in data)
+	return packet.upper()
 
 def send(data):
 	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -176,8 +180,7 @@ def send(data):
 
 # split a string into doubles
 # ie "FFAA0011" => [0xFFAA, 0x0011]
-def _split_into_doubles(line):
-	n = 4
+def _split_into_chunks(line, n = 4):
 	doubles = [line[i:i+n] for i in range(0, len(line), n)]
 	return [int(double, 16) for double in doubles]	
 

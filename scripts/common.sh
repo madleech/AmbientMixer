@@ -25,6 +25,5 @@ upload() {
 
 ubus() {
 	cd `dirname $0`/../../
-	pwd
 	python send_ubus_packet.py "$1" "$2" "$3"
 }
