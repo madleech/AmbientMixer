@@ -18,6 +18,7 @@
 	"ubus_mappings": [
 		{"node":1, "event":1, "sound":"crow"},
 		{"node":1, "event":2, "sound":"morepork"},
-		{"node":2, "event":1, "sound":"crested hawk"}
+		{"node":2, "event":1, "sound":"crested hawk"},
+		{"node":0, "event":"F3", "sound":"horn", "ignore_stop":true}
 	]
 }

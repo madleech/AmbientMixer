@@ -35,12 +35,16 @@ class ubus_listener:
 			del self.mappings[key]
 	
 	def _mapping_key_name(self, node, event):
-		return '%04x'%node + ':' + '%04x'%event
+		return '%02x'%a_to_double(node) + ':' + '%04x'%a_to_double(event)
 	
-	def sound_name_for_event(self, node, event):
+	def mapping_for_event(self, node, event):
+		# try exact match
 		key = self._mapping_key_name(node, event)
 		if self.mappings.has_key(key):
-			return self.mappings[key]["sound"]
+			return self.mappings[key]
+		# try wildcard match
+		elif node > 0:
+			return self.mapping_for_event(0, event)
 	
 	# listen for UBUS packets and dispatch to sequencer
 	def listen_udp(self):
@@ -78,10 +82,12 @@ class ubus_listener:
 	
 	# send an event to the sequencer
 	def dispatch(self, action, node, event):
-		sound_name = self.sound_name_for_event(node, event)
-		if not sound_name:
+		mapping = self.mapping_for_event(node, event)
+		if not mapping:
 			# print "No mapping for node {}, event {}".format(node, event)
 			return
+		
+		sound_name = mapping["sound"]
 		
 		sound = self.sequencer.get_sound(sound_name)
 		if not sound:
@@ -91,6 +97,9 @@ class ubus_listener:
 		if action == "play":
 			print "Playing {}".format(sound_name)
 			sound.play()
+		elif mapping.has_key("ignore_stop") and mapping["ignore_stop"] == True:
+			print "Ignoring stop for {}".format(sound_name)
+			return
 		elif action == "stop":
 			print "Stopping {}".format(sound_name)
 			sound.stop();
