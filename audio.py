@@ -300,6 +300,10 @@ class related_sounds:
 def convert_to_wav(filename, fade = False):
 	converted = re.sub('(.+)\.[a-z0-9A-Z]+', r'converted/\1.wav', os.path.basename(filename))
 	
+	# create output dir
+	if os.path.exists('converted') == False:
+		os.mkdir('converted')
+	
 	# convert if required
 	if os.path.isfile(converted) == False:
 		print 'converting {} to standard format'.format(filename)
