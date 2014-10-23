@@ -6,45 +6,37 @@ ACON = 0x40	# accessory on
 ACOF = 0x41	# accessory off
 ASON = 0x98	# short accessory on
 ASOF = 0x99	# short accessory off
+DFON = 0x61 # dcc function on
+DFOF = 0x62 # dcc function off
 
 class ubus_listener:
 	port = 5550
 	sequencer = None
-	mappings = {}
+	mappings = []
 	
 	def __init__(self, sequencer):
 		self.sequencer = sequencer
 	
 	# load in mappings
 	def setup(self, mappings):
-		for mapping in mappings:
-			self.update_mapping(mapping)
+		self.mappings = mappings
 	
 	def get_config(self):
-		return self.mappings.values()
+		return self.mappings
 	
 	# update a mapping
 	def update_mapping(self, mapping):
-		key = self._mapping_key_name(mapping["node"], mapping["event"])
-		self.mappings[key] = mapping
-		#print "Added mapping: {} -> {}".format(key, sound)
+		if mapping in self.mappings:
+			idx = self.mappings.index(mapping)
+			self.mappings[idx] = mapping
+		else:
+			self.mappings.append(mapping)
 	
 	def remove_mapping(self, mapping):
-		key = self._mapping_key_name(mapping["node"], mapping["event"])
-		if self.mappings.has_key(key):
-			del self.mappings[key]
+		if mapping in self.mappings:
+			idx = self.mappings.index(mapping)
+			del self.mappings[idx]
 	
-	def _mapping_key_name(self, node, event):
-		return '%02x'%a_to_double(node) + ':' + '%04x'%a_to_double(event)
-	
-	def mapping_for_event(self, node, event):
-		# try exact match
-		key = self._mapping_key_name(node, event)
-		if self.mappings.has_key(key):
-			return self.mappings[key]
-		# try wildcard match
-		elif node > 0:
-			return self.mapping_for_event(0, event)
 	
 	# listen for UBUS packets and dispatch to sequencer
 	def listen_udp(self):
@@ -56,12 +48,8 @@ class ubus_listener:
 			# establish connection with client.
 			packet, addr = sock.recvfrom(1024)
 			
-			# decode packet
-			action, node, event = self.decode(packet)
-			
-			# dispatch to sequencer
-			if action:
-				self.dispatch(action, node, event)
+			# process packet
+			self.process_packet(packet)
 	
 	# listen for UBUS packets and dispatch to sequencer
 	def listen_tcp(self):
@@ -73,33 +61,67 @@ class ubus_listener:
 			# establish connection with client.
 			packet, addr = sock.recvfrom(1024)
 			
-			# decode packet
-			action, node, event = self.decode(packet)
+			# process packet
+			self.process_packet(packet)
 			
-			# dispatch to sequencer
-			if action:
-				self.dispatch(action, node, event)
 	
-	# send an event to the sequencer
-	def dispatch(self, action, node, event):
-		mapping = self.mapping_for_event(node, event)
-		if not mapping:
-			# print "No mapping for node {}, event {}".format(node, event)
+	def process_packet(self, packet):
+		# decode packet
+		opcode, data = self.decode(packet)
+		if not opcode:
 			return
 		
-		sound_name = mapping["sound"]
+		# convert into an action
+		action, data = self.convert_to_action(opcode, data)
+		if not action:
+			return
 		
+		# get sound for this data
+		sound_name = self.sound_from_details(opcode, data)
+		if not sound_name:
+			return
+		
+		# dispatch to sequencer
+		self.dispatch(action, sound_name)
+	
+	
+	# converts arbitrary data into meaningful data
+	# e.g. U61000100 -> DFON, [loco:0001, function:01] (note +1 on function)
+	# e.g. U410102 -> ACON [node:01, event: 02]
+	def convert_to_action(self, opcode, data):
+		# U410102 -> ACON [node:01, event: 02]
+		if opcode == ACON:
+			return ("play", {"node":data[0], "event":data[1]})
+		elif opcode == ACOF:
+			return ("stop", {"node":data[0], "event":data[1]})
+		elif opcode == DFON:
+			return ("play", {"loco":(data[0] << 8) + data[1], "function":data[2]})
+		elif opcode == DFOF:
+			return ("stop", {"loco":(data[0] << 8) + data[1], "function":data[2]})
+	
+	def sound_from_details(self, opcode, data):
+		for mapping in self.mappings:
+			# mapping is listening for this opcode
+			if opcode in _destring_opcode(mapping["opcode"]):
+				# looking for a loco & function mapping
+				if opcode == DFON or opcode == DFOF:
+					if (data["loco"] == mapping["loco"] or mapping["loco"] == "*") and (data["function"] == mapping["function"] or mapping["function"] == "*"):
+						return mapping["sound"]
+				# looking for a node & event
+				elif opcode == ACON or opcode == ACOF:
+					if (data["node"] == mapping["node"] or mapping["node"] == "*") and (data["event"] == mapping["event"] or mapping["event"] == "*"):
+						return mapping["sound"]
+	
+	# send an event to the sequencer
+	def dispatch(self, action, sound_name):
 		sound = self.sequencer.get_sound(sound_name)
 		if not sound:
-			print "No sound in sequencer named {} for node {}, event {}".format(sound_name, node, event)
+			print "No sound in sequencer named {}".format(sound_name)
 			return
 		
 		if action == "play":
 			print "Playing {}".format(sound_name)
 			sound.play()
-		elif mapping.has_key("ignore_stop") and mapping["ignore_stop"] == True:
-			print "Ignoring stop for {}".format(sound_name)
-			return
 		elif action == "stop":
 			print "Stopping {}".format(sound_name)
 			sound.stop();
@@ -108,7 +130,7 @@ class ubus_listener:
 			return
 	
 	# decode packets into event type, and event number
-	# example packet: :SBFE0N9000010203;
+	# example packet: U410203
 	# protocol details: http://wiki.rocrail.net/doku.php?id=cbus:protocol
 	#  NONE = 0x00, // no result
 	#  ACON = 0x90,	// accessory on
@@ -116,42 +138,10 @@ class ubus_listener:
 	#  ASON = 0x98,	// short accessory on
 	#  ASOF = 0x99,	// short accessory off
 	def decode(self, packet):
-		# ACON - <90><node byte 1><node 2><event number 1><event number 2>
-		# decode as PLAY <event number = channel>
-		match = self.match(packet, ACON)
-		if match:
-			return ("play", match[0], match[1])
-		
-		# ACOF - <91><node byte 1><node 2><event number 1><event number 2>
-		# decode as STOP <event number = channel>
-		match = self.match(packet, ACOF)
-		if match:
-			return ("stop", match[0], match[1])
-		
-		# ASON - <98><node byte 1><node 2><device number 1><device number 2>
-		# decode as PLAY <device number = channel>
-		# match = self.match(packet, ASON)
-		# if match:
-		# 	return ("play", match[0], match[1])
-		
-		# ASOF - <99><node byte 1><node 2><device number 1><device number 2>
-		# decode as STOP <device number = channel>
-		# match = self.match(packet, ASOF)
-		# if match:
-		# 	return ("stop", match[0], match[1])
-		
-		# default
-		return (None, None, None)
-	
-	# check if a packet matches the UBUS format
-	def match(self, data, opcode, prefixes=[]):
-		# calculate hex prefix to look for
-		opcode = '%02x'%opcode
-		prefix = ''.join('%04x'%i for i in prefixes)
 		# build regex and search for matching data
-		match = re.match('U'+opcode+prefix+'([A-F0-9]{2})(([A-F0-9]{2})*)', data)
+		match = re.match('U([A-F0-9]{2})(([A-F0-9]{2})*)', packet)
 		if match:
-			return _split_into_chunks(match.group(1), n=2) + _split_into_chunks(match.group(2))
+			return (_split_into_chunks(match.group(1))[0], _split_into_chunks(match.group(2)))
 		# no match
 		else:
 			return None
@@ -163,12 +153,13 @@ class ubus_listener:
 def a_to_double(anything):
 	if isinstance(anything, int):
 		return anything
-	else:
+	elif "0x" in anything and anything.index("0x") is 0:
 		return int(anything, 16)
+	else:
+		return int(anything, 10)
 
 def a_to_double_bytes(anything):
-	if isinstance(anything, int) == False:
-		anything = int(anything, 16)
+	anything = a_to_double(anything)
 	return [anything >> 8, anything & 0xFF]
 
 # 90, [0x0001, 0x0203] -> :SBFE0N9000010203;
@@ -189,7 +180,7 @@ def send(data):
 
 # split a string into doubles
 # ie "FFAA0011" => [0xFFAA, 0x0011]
-def _split_into_chunks(line, n = 4):
+def _split_into_chunks(line, n = 2):
 	doubles = [line[i:i+n] for i in range(0, len(line), n)]
 	return [int(double, 16) for double in doubles]	
 
@@ -204,3 +195,16 @@ def _split_into_nibbles(line):
 def _decode_2_hex_nibbles(nibbles):
 	n = 2
 	return [int(nibbles[i] + nibbles[i+1], 16) for i in range(0, len(nibbles), n)]
+
+def _destring_opcode(opcodes):
+	out = []
+	for opcode in opcodes:
+		if (opcode == "ACON"):
+			out.append(ACON)
+		elif (opcode == "ACOF"):
+			out.append(ACOF)
+		elif (opcode == "DFON"):
+			out.append(DFON)
+		elif (opcode == "DFOF"):
+			out.append(DFOF)
+	return out
