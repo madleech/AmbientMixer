@@ -37,7 +37,7 @@ try:
 	t1.daemon = True
 	t1.start()
 
-	t2 = threading.Thread(target=ubus_server.listen_tcp)
+	t2 = threading.Thread(target=ubus_server.listen)
 	t2.daemon = True
 	t2.start()
 	

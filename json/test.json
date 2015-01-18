@@ -16,9 +16,11 @@
 		{"name": "crickets and wolves", "filename": "sounds/29_Crickets_And_Wolves.mp3", "volume": 100}
 	],
 	"ubus_mappings": [
-		{"node":1, "event":1, "sound":"crow"},
-		{"node":1, "event":2, "sound":"morepork"},
-		{"node":2, "event":1, "sound":"crested hawk"},
-		{"node":0, "event":"F3", "sound":"horn", "ignore_stop":true}
+		{"opcode":["ACON", "ACOF"], "node":1, "event":1, "sound":"crow"},
+		{"opcode":["ACON"], "node":1, "event":2, "sound":"morepork"},
+		{"opcode":["ACON"], "node":2, "event":1, "sound":"crested hawk"},
+		{"opcode":["ACON"], "node":0, "event":"F3", "sound":"horn"},
+		{"opcode":["DFON"], "loco":1234, "function":3, "sound":"horn"},
+		{"opcode":["DFON", "DFOF"], "loco":"*", "function":1, "sound":"crossing"}
 	]
 }

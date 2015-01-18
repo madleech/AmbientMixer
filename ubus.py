@@ -37,11 +37,24 @@ class ubus_listener:
 			idx = self.mappings.index(mapping)
 			del self.mappings[idx]
 	
+	def listen(self):
+		# try on UDP
+		try:
+			self.listen_udp()
+			self.listen_tcp()
+		
+		# otherwise try on TCP
+		except Exception as e:
+			print 'Exception caught while running server: {}'.format(e)
 	
 	# listen for UBUS packets and dispatch to sequencer
 	def listen_udp(self):
+		print 'Starting UDP listener on port {}'.format(self.port)
 		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		sock.bind(('', self.port))
+		try:
+			sock.bind(('', self.port))
+		except Exception as e:
+			print 'Exception caught while starting UDP listener: {}'.format(e)
 		print 'UDP UBUS listening on port {}'.format(self.port)
 		
 		while True:
@@ -53,6 +66,7 @@ class ubus_listener:
 	
 	# listen for UBUS packets and dispatch to sequencer
 	def listen_tcp(self):
+		print 'Connecting to TCP UBUS server on localhost:{}'.format(self.port)
 		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		sock.connect(('localhost', self.port))
 		print 'TCP UBUS connected to localhost on port {}'.format(self.port)
@@ -69,6 +83,7 @@ class ubus_listener:
 		# decode packet
 		opcode, data = self.decode(packet)
 		if not opcode:
+			print "Invalid packet: {}".format(packet)
 			return
 		
 		# convert into an action
@@ -144,7 +159,7 @@ class ubus_listener:
 			return (_split_into_chunks(match.group(1))[0], _split_into_chunks(match.group(2)))
 		# no match
 		else:
-			return None
+			return (None, None)
 
 
 # convert "1234" to 0x4660
