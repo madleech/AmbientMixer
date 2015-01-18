@@ -203,8 +203,9 @@ class related_sounds:
 		if loop:
 			frequency = 0
 		
-		if os.path.exists(filename) == False:
-			raise Exception("File not found: " + filename)
+		for file in files:
+			if os.path.exists(file) == False:
+				raise Exception("File not found: " + file)
 		
 		# file converted, load into pygame sound
 		self._filenames = [convert_to_wav(file) for file in files]
@@ -309,7 +310,7 @@ class related_sounds:
 # check format is correct - wav, 44khz, 16bit
 def convert_to_wav(filename, fade = False):
 	dir = '/tmp/converted'
-	converted = re.sub('(.+)\.[a-z0-9A-Z]+', r'' + dir + '/\1.wav', os.path.basename(filename))
+	converted = re.sub('(.+)\.[a-z0-9A-Z]+', dir + r'/\1.wav', os.path.basename(filename))
 	
 	# create output dir
 	if os.path.exists(dir) == False:
