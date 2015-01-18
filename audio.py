@@ -5,6 +5,7 @@
 #   - file
 #   - loop / frequency
 
+import os
 import re
 import time
 import random
@@ -27,6 +28,9 @@ class sound:
 		
 		if loop:
 			frequency = 0
+		
+		if os.path.exists(filename) == False:
+			raise Exception("File not found: " + filename)
 		
 		# file converted, load into pygame sound
 		self._filename = convert_to_wav(filename)
@@ -124,6 +128,9 @@ class background_sound:
 	_volume = 0
 	
 	def __init__(self, name, filename, volume):
+		if os.path.exists(filename) == False:
+			raise Exception("File not found: " + filename)
+		
 		# properties
 		self._filename = convert_to_wav(filename, True)
 		self._name = name
@@ -134,7 +141,7 @@ class background_sound:
 	
 	# check format is correct - ogg
 	def convert(self, filename):
-		converted = re.sub('(.+)\.[a-z0-9A-Z]+', r'converted/\1.wav', os.path.basename(filename))
+		converted = re.sub('(.+)\.[a-z0-9A-Z]+', r'/tmp/converted/\1.wav', os.path.basename(filename))
 		
 		# convert if required
 		if os.path.isfile(converted) == False:
@@ -195,6 +202,9 @@ class related_sounds:
 		
 		if loop:
 			frequency = 0
+		
+		if os.path.exists(filename) == False:
+			raise Exception("File not found: " + filename)
 		
 		# file converted, load into pygame sound
 		self._filenames = [convert_to_wav(file) for file in files]
@@ -298,11 +308,12 @@ class related_sounds:
 
 # check format is correct - wav, 44khz, 16bit
 def convert_to_wav(filename, fade = False):
-	converted = re.sub('(.+)\.[a-z0-9A-Z]+', r'converted/\1.wav', os.path.basename(filename))
+	dir = '/tmp/converted'
+	converted = re.sub('(.+)\.[a-z0-9A-Z]+', r'' + dir + '/\1.wav', os.path.basename(filename))
 	
 	# create output dir
-	if os.path.exists('converted') == False:
-		os.mkdir('converted')
+	if os.path.exists(dir) == False:
+		os.mkdir(dir)
 	
 	# convert if required
 	if os.path.isfile(converted) == False:
