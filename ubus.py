@@ -53,9 +53,10 @@ class ubus_listener:
 		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		try:
 			sock.bind(('', self.port))
+			print 'UDP UBUS listening on port {}'.format(self.port)
 		except Exception as e:
 			print 'Exception caught while starting UDP listener: {}'.format(e)
-		print 'UDP UBUS listening on port {}'.format(self.port)
+			return False
 		
 		while True:
 			# establish connection with client.
