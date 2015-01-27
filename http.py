@@ -1,3 +1,4 @@
+import os
 import cgi
 import sys
 import json
@@ -7,6 +8,58 @@ import BaseHTTPServer
 
 # decode HTTP posts
 class PostHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+	def do_GET(self):
+		basedir = os.path.dirname(os.path.realpath(__file__))
+		
+		if self.path == "/":
+			self.path = "/index.html"
+		
+		try:
+			sendReply = False
+			if self.path.endswith(".html"):
+				mimetype = 'text/html'
+				sendReply = True
+			if self.path.endswith(".png"):
+				mimetype = 'image/png'
+				sendReply = True
+			if self.path.endswith(".jpg"):
+				mimetype = 'image/jpg'
+				sendReply = True
+			if self.path.endswith(".gif"):
+				mimetype = 'image/gif'
+				sendReply = True
+			if self.path.endswith(".js"):
+				mimetype = 'application/javascript'
+				sendReply = True
+			if self.path.endswith(".css"):
+				mimetype = 'text/css'
+				sendReply = True
+			if self.path.endswith(".otf"):
+				mimetype = 'application/x-font-otf'
+				sendReply = True
+			
+			if sendReply == True:
+				print '-> GET {}'.format(self.path)
+				#Open the static file requested and send it
+				f = open(os.sep.join([basedir, 'gui', self.path]))
+				self.send_response(200)
+				self.send_header('Content-type', mimetype)
+				self.end_headers()
+				self.wfile.write(f.read())
+				f.close()
+			return
+		
+		except IOError:
+			self.send_error(404,'File Not Found: %s' % self.path)
+	
+	def do_OPTIONS(self):
+		self.send_response(200)
+		self.send_header('Access-Control-Allow-Origin', '*')
+		self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+		self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+		self.send_header('Access-Control-Max-Age', '1728000')
+		self.end_headers()
+	
 	def do_POST(self):
 		# is this a multi-part post?
 		if self.headers['Content-Type'].find('multipart/form-data') > -1:
@@ -23,18 +76,23 @@ class PostHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			json_data = form['json'].value
 			
 			# is a file upload too?
-			if (form.has_key('file') and form['file'].filename):
-				# place file into sounds/ under its filename
-				filename = "sounds/" + form['file'].filename
-				print "File uploaded to {}".format(filename)
-				fp = open(filename, 'wb')
-				while True:
-					chunk = form['file'].file.read(8192)
-					if len(chunk) == 0:
-						break
-					else:
-						fp.write(chunk)
-				fp.close()
+			if (form.has_key('file')):
+				files = form['file']
+				if isinstance(files, list) == False:
+					files = [files]
+				for file in files:
+					if (file.filename):
+						# place file into sounds dir under its filename
+						filename = file.filename
+						print "-> file uploaded to {}/{}".format(os.getcwd(), filename)
+						fp = open(filename, 'wb')
+						while True:
+							chunk = file.file.read(8192)
+							if len(chunk) == 0:
+								break
+							else:
+								fp.write(chunk)
+						fp.close()
 		
 		# not a form style post, so just get raw data
 		else:
@@ -44,15 +102,19 @@ class PostHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		
 		# begin response
 		self.send_response(200)
+		self.send_header('Access-Control-Allow-Origin', '*')
 		self.end_headers()
 		
-		print json_data
+		print '-> {}'.format(json_data)
 		
 		# decode packet
 		target, method, name, args = self.server.decode(json_data)
 		
 		# dispatch to appropriate handler
-		result = self.server.dispatch(target, method, name, args)
+		try:
+			result = self.server.dispatch(target, method, name, args)
+		except Exception as e:
+			result = {'error': str(e)}
 		
 		# return response, close connection with client
 		self.wfile.write(json.dumps(result, sort_keys=True, indent=4, separators=(',', ': ')))
@@ -134,7 +196,7 @@ class http_server:
 		
 		# catch any kind of dispatch error
 		except KeyError as e:
-			# e = sys.exc_info()
+			error = "No such key {} while dispatching method {} to target {}".format(e, method, target)
 			print e
-			return {"error":str(e[1])}
+			return {"error":error}
 

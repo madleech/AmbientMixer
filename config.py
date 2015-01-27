@@ -1,6 +1,8 @@
 import json
 
 class config:
+	_name = ''
+	
 	def __init__(self, sequencer, ubus_server):
 		self.sequencer = sequencer
 		self.ubus_server = ubus_server
@@ -20,6 +22,9 @@ class config:
 	
 	# apply a config
 	def apply(self, settings):
+		if settings.has_key("name"):
+			self._name = settings['name']
+		
 		# configure sequencer
 		if settings.has_key("sounds"):
 			self.sequencer.setup_sounds(settings['sounds'])
@@ -29,9 +34,13 @@ class config:
 		# configure UBUS server
 		if settings.has_key("ubus_mappings"):
 			self.ubus_server.setup(settings['ubus_mappings'])
+		
+		# success
+		return True
 	
 	def get(self):
 		data = {
+			"name":self._name,
 			"sounds":[], 
 			"background_sounds":[],
 			"ubus_mappings":[]

@@ -118,7 +118,7 @@ class ubus_listener:
 	def sound_from_details(self, opcode, data):
 		for mapping in self.mappings:
 			# mapping is listening for this opcode
-			if opcode in _destring_opcode(mapping["opcode"]):
+			if opcode in _destring_opcode(mapping["opcodes"]):
 				# looking for a loco & function mapping
 				if opcode == DFON or opcode == DFOF:
 					if (data["loco"] == mapping["loco"] or mapping["loco"] == "*") and (data["function"] == mapping["function"] or mapping["function"] == "*"):

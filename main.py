@@ -31,6 +31,11 @@ try:
 		os.chdir(os.path.dirname(sys.argv[1]))
 		# load config
 		config_manager.load(os.path.basename(sys.argv[1]))
+	else:
+		dir = 'sounds'
+		if os.path.exists(dir) == False:
+			os.mkdir(dir)
+		os.chdir(dir)
 	
 	# run servers on new threads
 	t1 = threading.Thread(target=http_server.listen)
