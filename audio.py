@@ -62,7 +62,7 @@ class sound:
 			"volume": int(self._volume * 100),
 			"frequency": int(self._frequency),
 			"period": int(self._period),
-			"loop": self._loop			
+			"loop": self._loop
 		}
 	
 	def update_config(self, attributes):
@@ -98,7 +98,7 @@ class sound:
 	def play(self):
 		# print 'play: {}'.format(self._name)
 		if self.is_playing():
-			self._sound.fadeout(1000)
+			self.stop()
 		
 		if self._sound == None:
 			self._sound = self.random_sound()
@@ -375,4 +375,3 @@ def convert_to_wav(filename, fade = False):
 		subprocess.call(cmd)
 	
 	return converted
-

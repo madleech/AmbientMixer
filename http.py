@@ -1,4 +1,5 @@
 import os
+import re
 import cgi
 import sys
 import json
@@ -13,6 +14,10 @@ class PostHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		
 		if self.path == "/":
 			self.path = "/index.html"
+		
+		match = re.search('^(.+)\?', self.path)
+		if match:
+			self.path = match.group(1)
 		
 		try:
 			sendReply = False
@@ -36,6 +41,12 @@ class PostHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				sendReply = True
 			if self.path.endswith(".otf"):
 				mimetype = 'application/x-font-otf'
+				sendReply = True
+			if self.path.endswith(".woff"):
+				mimetype = 'application/x-font-woff'
+				sendReply = True
+			if self.path.endswith(".ttf"):
+				mimetype = 'application/x-font-ttf'
 				sendReply = True
 			
 			if sendReply == True:
