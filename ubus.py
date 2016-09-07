@@ -82,68 +82,28 @@ class ubus_listener:
 	
 	def process_packet(self, packet):
 		# decode packet
-		opcode, data = self.decode(packet)
-		if not opcode:
-			print "Invalid packet: {}".format(packet)
-			return
-		
-		# convert into an action
-		action, data = self.convert_to_action(opcode, data)
-		if not action:
-			return
-		
-		# get sound for this data
-		sound_name = self.sound_from_details(opcode, data)
-		if not sound_name:
-			return
-		
-		# dispatch to sequencer
-		self.dispatch(action, sound_name)
+		data = self.decode(packet)
+		if data:
+			self.sequencer.dispatch(data)
 	
+	def decode(self, packet):
+		opcode, data = self.decode_raw_packet(packet)
+		if opcode:
+			return parse_packet(opcode, data)
 	
 	# converts arbitrary data into meaningful data
 	# e.g. U61000100 -> DFON, [loco:0001, function:01] (note +1 on function)
 	# e.g. U410102 -> ACON [node:01, event: 02]
-	def convert_to_action(self, opcode, data):
+	def parse_packet(self, opcode, data):
 		# U410102 -> ACON [node:01, event: 02]
 		if opcode == ACON:
-			return ("play", {"node":data[0], "event":data[1]})
+			return {"node":data[0], "event":data[1], "state":True}
 		elif opcode == ACOF:
-			return ("stop", {"node":data[0], "event":data[1]})
+			return {"node":data[0], "event":data[1], "state":False}
 		elif opcode == DFON:
-			return ("play", {"loco":(data[0] << 8) + data[1], "function":data[2]})
+			return {"loco":(data[0] << 8) + data[1], "function":data[2], "state":True}
 		elif opcode == DFOF:
-			return ("stop", {"loco":(data[0] << 8) + data[1], "function":data[2]})
-	
-	def sound_from_details(self, opcode, data):
-		for mapping in self.mappings:
-			# mapping is listening for this opcode
-			if opcode in _destring_opcode(mapping["opcodes"]):
-				# looking for a loco & function mapping
-				if opcode == DFON or opcode == DFOF:
-					if (data["loco"] == mapping["loco"] or mapping["loco"] == "*") and (data["function"] == mapping["function"] or mapping["function"] == "*"):
-						return mapping["sound"]
-				# looking for a node & event
-				elif opcode == ACON or opcode == ACOF:
-					if (data["node"] == mapping["node"] or mapping["node"] == "*") and (data["event"] == mapping["event"] or mapping["event"] == "*"):
-						return mapping["sound"]
-	
-	# send an event to the sequencer
-	def dispatch(self, action, sound_name):
-		sound = self.sequencer.get_sound(sound_name)
-		if not sound:
-			print "No sound in sequencer named {}".format(sound_name)
-			return
-		
-		if action == "play":
-			print "Playing {}".format(sound_name)
-			sound.play()
-		elif action == "stop":
-			print "Stopping {}".format(sound_name)
-			sound.stop();
-		else:
-			print "Unknown action: {}".format(action)
-			return
+			return {"loco":(data[0] << 8) + data[1], "function":data[2], "state":False}
 	
 	# decode packets into event type, and event number
 	# example packet: U410203
@@ -153,7 +113,7 @@ class ubus_listener:
 	#  ACOF = 0x91,	// accessory off
 	#  ASON = 0x98,	// short accessory on
 	#  ASOF = 0x99,	// short accessory off
-	def decode(self, packet):
+	def decode_raw_packet(self, packet):
 		# build regex and search for matching data
 		match = re.match('U([A-F0-9]{2})(([A-F0-9]{2})*)', packet)
 		if match:
@@ -198,7 +158,7 @@ def send(data):
 # ie "FFAA0011" => [0xFFAA, 0x0011]
 def _split_into_chunks(line, n = 2):
 	doubles = [line[i:i+n] for i in range(0, len(line), n)]
-	return [int(double, 16) for double in doubles]	
+	return [int(double, 16) for double in doubles]
 
 # split a string into nibbles
 # ie "FFAA00" => ['FF', 'AA', '00']

@@ -6,9 +6,14 @@ import pygame.mixer
 class sequencer:
 	sounds = {}
 	background_sounds = {}
+	mappings = []
 	
 	def __init__(self):
 		pygame.mixer.init(44100, -16, 2, 2048)
+	
+	# load in mappings
+	def setup_mappings(self, mappings):
+		self.mappings = mappings
 	
 	# load in each defined sound
 	def setup_sounds(self, sounds, replace=True):
@@ -70,7 +75,7 @@ class sequencer:
 		return True
 	
 	def get_config(self):
-		data = {"sounds":[], "background_sounds":[]}
+		data = {"mappings":self.mappings, "sounds":[], "background_sounds":[]}
 		for key, sound in self.sounds.items():
 			data['sounds'].append(sound.get_config())
 		for key, sound in self.background_sounds.items():
@@ -108,6 +113,42 @@ class sequencer:
 		else:
 			pygame.mixer.unpause()
 	
+	# given a set of data, convert it into a sound and action
+	# - data is a hash
+	def dispatch(self, data):
+		for mapping in self.mappings:
+			# mapping is listening for this loco and function
+			if self.mapping_matches_packet(data, mapping):
+				self.dispatch_action(mapping["action"], mapping["sound"])
+	
+	# does a mapping match a packet?
+	# a blank match clause will match all packets
+	def mapping_matches_packet(self, data, mapping):
+		for key, value in mapping["match"].iteritems():
+			if not data.has_key(key):
+				return False
+			if isinstance(value, list) and data[key] not in value:
+				return False
+			if not isinstance(value, list) and data[key] != value:
+				return False
+		return True
+	
+	def dispatch_action(self, action, sound_name):
+		sound = self.get_sound(sound_name)
+		if not sound:
+			print "No sound in sequencer named {}".format(sound_name)
+			return
+		
+		if action == "play":
+			print "Playing {}".format(sound_name)
+			sound.play()
+		elif action == "stop":
+			print "Stopping {}".format(sound_name)
+			sound.stop();
+		else:
+			print "Unknown action: {}".format(action)
+			return
+		
 	# main run loop
 	def run(self):
 		while True:

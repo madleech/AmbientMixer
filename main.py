@@ -5,6 +5,7 @@ import ubus
 import time
 import audio
 import server
+import rocrail
 import threading
 from config import config
 from sequencer import sequencer
@@ -20,10 +21,13 @@ try:
 	ubus_server = ubus.ubus_listener(seq)
 	
 	# create a config manager
-	config_manager = config(sequencer=seq, ubus_server=ubus_server)
+	config_manager = config(sequencer=seq)
 	
 	# create HTTP management interface
-	http_server = http.http_server(port=9988, sequencer=seq, ubus_server=ubus_server, config_manager=config_manager)
+	http_server = http.http_server(port=9988, sequencer=seq, config_manager=config_manager)
+	
+	# connect to RocRail and listen for xml events
+	rocrail_client = rocrail.client(sequencer=seq)
 	
 	# load config file
 	if len(sys.argv) > 1:
@@ -46,6 +50,10 @@ try:
 	t2 = threading.Thread(target=ubus_server.listen)
 	t2.daemon = True
 	t2.start()
+	
+	t3 = threading.Thread(target=rocrail_client.listen)
+	t3.daemon = True
+	t3.start()
 	
 	# start sequencer running
 	seq.run()

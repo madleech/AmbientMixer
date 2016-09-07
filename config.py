@@ -3,9 +3,8 @@ import json
 class config:
 	_name = ''
 	
-	def __init__(self, sequencer, ubus_server):
+	def __init__(self, sequencer):
 		self.sequencer = sequencer
-		self.ubus_server = ubus_server
 	
 	# load in and parse the JSON config file
 	def load(self, file):
@@ -30,10 +29,8 @@ class config:
 			self.sequencer.setup_sounds(settings['sounds'])
 		if settings.has_key("background_sounds"):
 			self.sequencer.setup_background_sounds(settings['background_sounds'])
-		
-		# configure UBUS server
-		if settings.has_key("ubus_mappings"):
-			self.ubus_server.setup(settings['ubus_mappings'])
+		if settings.has_key("mappings"):
+			self.sequencer.setup_mappings(settings['mappings'])
 		
 		# success
 		return True
@@ -41,9 +38,9 @@ class config:
 	def get(self):
 		data = {
 			"name":self._name,
-			"sounds":[], 
+			"sounds":[],
 			"background_sounds":[],
-			"ubus_mappings":[]
+			"mappings":[]
 		}
 		# configure sequencer
 		for key, sound in self.sequencer.sounds.items():
@@ -52,7 +49,6 @@ class config:
 			data['background_sounds'].append(sound.get_config())
 		
 		# configure UBUS server
-		data['ubus_mappings'] = self.ubus_server.get_config()
+		data['mappings'] = self.sequencer.mappings
 		
 		return data
-

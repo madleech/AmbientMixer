@@ -64,7 +64,7 @@ class PostHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		# is this a multi-part post?
 		if self.headers['Content-Type'].find('multipart/form-data') > -1:
 			form = cgi.FieldStorage(
-				fp=self.rfile, 
+				fp=self.rfile,
 				headers=self.headers,
 				environ={
 					'REQUEST_METHOD':'POST',
@@ -126,12 +126,10 @@ class PostHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 class http_server:
 	port = None
 	sequencer = None
-	ubus_server = None
 	
-	def __init__(self, port, sequencer, ubus_server, config_manager):
+	def __init__(self, port, sequencer, config_manager):
 		self.port = port
 		self.sequencer = sequencer
-		self.ubus_server = ubus_server
 		self.config_manager = config_manager
 	
 	def listen(self):
@@ -144,7 +142,7 @@ class http_server:
 		print 'HTTP server listening on port {}'.format(self.port)
 		server.serve_forever()
 	
-	# packet format: {method:<method>, target:<ubus, sequencer, sound, background_sound>, [name:sound name], args:[args]}
+	# packet format: {method:<method>, target:<sequencer, sound, background_sound>, [name:sound name], args:[args]}
 	def decode(self, packet):
 		#try:
 		data   = json.loads(packet)
@@ -169,12 +167,7 @@ class http_server:
 			# dispatch to config manager
 			if target == 'config':
 				if hasattr(self.config_manager, method):
-					return getattr(self.config_manager, method)(*args)			
-			
-			# dispatch to ubus_server
-			if target == 'ubus':
-				if hasattr(self.ubus_server, method):
-					return getattr(self.ubus_server, method)(*args)
+					return getattr(self.config_manager, method)(*args)
 			
 			# dispatch to sequencer
 			elif target == 'sequencer':
@@ -199,4 +192,3 @@ class http_server:
 			error = "No such key {} while dispatching method {} to target {}".format(e, method, target)
 			print e
 			return {"error":error}
-
