@@ -144,7 +144,7 @@ class http_server:
 		self.config_manager = config_manager
 	
 	def listen(self):
-		server = BaseHTTPServer.HTTPServer(('localhost', self.port), PostHandler)
+		server = BaseHTTPServer.HTTPServer(('0.0.0.0', self.port), PostHandler)
 		# set up callbacks for processing from handler
 		server.sequencer = self.sequencer
 		server.decode = self.decode
