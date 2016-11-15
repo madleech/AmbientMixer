@@ -7,6 +7,7 @@ class sequencer:
 	sounds = {}
 	background_sounds = {}
 	mappings = []
+	_mute = False
 	
 	def __init__(self):
 		pygame.mixer.init(44100, -16, 2, 2048)
@@ -108,6 +109,7 @@ class sequencer:
 	
 	def mute(self, state):
 		print 'Muting: {}'.format(state)
+		self._mute = state
 		if state == True:
 			pygame.mixer.pause()
 		else:
@@ -158,7 +160,7 @@ class sequencer:
 				if adjustment > 0:
 				# delay next play of sounds to account for slip in clock
 					sound.delay_by(adjustment)
-				else:
+				elif self._mute == False:
 					sound.play_if_required()
 
 	
