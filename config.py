@@ -1,19 +1,38 @@
+# coding=utf-8
+
 import json
+import time
+import os.path
 
 class config:
 	_name = ''
 	
-	def __init__(self, sequencer):
+	def __init__(self, sequencer, filename=None):
 		self.sequencer = sequencer
+		self.filename = filename
+		if os.path.exists(self.filename):
+			self.load()
 	
 	# load in and parse the JSON config file
-	def load(self, file):
+	def load(self):
 		# load config file
-		fp = open(file)
+		fp = open(self.filename)
 		config = json.load(fp)
 		fp.close()
 		
 		return self.apply(config)
+	
+	# save config to a local JSON file
+	def save(self):
+		fp = open(self.filename, 'w')
+		json.dump(self.get(), fp)
+		fp.close()
+		print u'✓ Saved configuration to {}'.format(self.filename).encode('utf-8')
+	
+	def periodic_save(self):
+		while True:
+			time.sleep(10)
+			self.save()
 	
 	def set(self, json_data):
 		config = json.loads(json_data)
