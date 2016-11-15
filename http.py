@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import os
 import re
 import cgi
@@ -150,7 +152,7 @@ class http_server:
 		server.decode = self.decode
 		server.dispatch = self.dispatch
 		# start server
-		print 'HTTP server listening on port {}'.format(self.port)
+		print u'✓ HTTP server listening on port {}'.format(self.port).encode('utf-8')
 		server.serve_forever()
 	
 	# packet format: {method:<method>, target:<sequencer, sound, background_sound>, [name:sound name], args:[args]}

@@ -1,29 +1,32 @@
+# coding=utf-8
+
 import re
 import socket
 import xml.etree.ElementTree as ET
 
 class client:
 	port = 8051
-	host = '10.0.2.40'
+	host = 'localhost'
 	sequencer = None
 	mappings = []
 	
-	def __init__(self, sequencer):
+	def __init__(self, sequencer, host = 'localhost'):
 		self.sequencer = sequencer
+		self.host = host
 	
 	def listen(self):
 		self.listen_tcp()
 	
 	# listen for rocrail packets and dispatch to sequencer
 	def listen_tcp(self):
-		print 'Connecting to RocRail on {}:{}'.format(self.host, self.port)
+		print 'Connecting to RocRail server at {}:{}'.format(self.host, self.port)
 		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		sock.connect((self.host, self.port))
-		print 'RocRail connected'
+		print u'✓ Connected to RocRail server at {}:{}'.format(self.host, self.port).encode('utf-8')
 		
 		while True:
 			# establish connection with client.
-			packet, addr = sock.recvfrom(1024)
+			packet = sock.recv(4096)
 			
 			# process packet
 			self.process_packet(packet)

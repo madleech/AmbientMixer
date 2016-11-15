@@ -27,7 +27,7 @@ try:
 	http_server = http.http_server(port=9988, sequencer=seq, config_manager=config_manager)
 	
 	# connect to RocRail and listen for xml events
-	rocrail_client = rocrail.client(sequencer=seq)
+	rocrail_client = rocrail.client(sequencer=seq, host=os.getenv('ROCRAIL_HOST', 'localhost'))
 	
 	# load config file
 	if len(sys.argv) > 1:

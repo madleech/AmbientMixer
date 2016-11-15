@@ -44,8 +44,9 @@ class sound:
 				raise Exception("File not found: " + file)
 		
 		# file converted, load into pygame sound
-		self._filenames = [convert_to_wav(file) for file in files]
-		self._sounds = [pygame.mixer.Sound(file) for file in self._filenames]
+		self._filenames = files
+		self._converted_filenames = [convert_to_wav(file) for file in self._filenames]
+		self._sounds = [pygame.mixer.Sound(file) for file in self._converted_filenames]
 		self._volume = float(volume) / 100
 		self.loop(loop)
 		self.freq(frequency, period)
@@ -84,8 +85,9 @@ class sound:
 				for sound in self._sounds:
 					sound.stop()
 				# replace with new sounds
-				self._filenames = [convert_to_wav(file) for file in filenames]
-				self._sounds = [pygame.mixer.Sound(file) for file in self._filenames]
+				self._filenames = filenames
+				self._converted_filenames = [convert_to_wav(file) for file in self._filenames]
+				self._sounds = [pygame.mixer.Sound(file) for file in self._converted_filenames]
 				# regenerate play times
 				self.calculate_play_times()
 				
@@ -106,7 +108,7 @@ class sound:
 		self._playing = True
 		self._started_at = time.time()
 		self._sound.set_volume(self.get_playback_vol())
-		print u'► {} ({})'.format(self._name, self._sound)
+		print u'► {} ({})'.format(self._name, self._sound).encode('utf-8')
 		
 		if self._loop:
 			self._frequency = 0
@@ -339,7 +341,7 @@ class background_sound:
 		return pygame.mixer.music.get_busy()
 
 def converted_filename(filename):
-	dir = '/tmp/converted'
+	dir = os.path.dirname(os.path.realpath(filename)) + '/converted'
 	converted = re.sub('(.+)\.[a-z0-9A-Z]+', dir + r'/\1.wav', os.path.basename(filename))
 	
 	# create output dir
@@ -372,6 +374,7 @@ def convert_to_wav(filename, fade = False):
 			cmd = [script, filename, converted, "fade"]
 		else:
 			cmd = [script, filename, converted]
+		print 'Converting sound with: {}'.format(cmd)
 		subprocess.call(cmd)
 	
 	return converted

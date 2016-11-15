@@ -1,3 +1,5 @@
+# coding=utf-8
+
 import re
 import socket
 
@@ -53,7 +55,7 @@ class ubus_listener:
 		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		try:
 			sock.bind(('', self.port))
-			print 'UDP UBUS listening on port {}'.format(self.port)
+			print u'✓ UDP UBUS now listening on port {}'.format(self.port).encode('utf-8')
 		except Exception as e:
 			print 'Exception caught while starting UDP listener: {}'.format(e)
 			return False
@@ -70,7 +72,7 @@ class ubus_listener:
 		print 'Connecting to TCP UBUS server on localhost:{}'.format(self.port)
 		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		sock.connect(('localhost', self.port))
-		print 'TCP UBUS connected to localhost on port {}'.format(self.port)
+		print '✓ Connected to TCP UBUS server on port {}'.format(self.port).encode('utf-8')
 		
 		while True:
 			# establish connection with client.
