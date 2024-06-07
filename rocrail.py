@@ -19,10 +19,10 @@ class client:
 	
 	# listen for rocrail packets and dispatch to sequencer
 	def listen_tcp(self):
-		print 'Connecting to RocRail server at {}:{}'.format(self.host, self.port)
+		print('➝ Connecting to RocRail server at {}:{}'.format(self.host, self.port))
 		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		sock.connect((self.host, self.port))
-		print u'✓ Connected to RocRail server at {}:{}'.format(self.host, self.port).encode('utf-8')
+		print('✓ Connected to RocRail server at {}:{}'.format(self.host, self.port))
 		
 		while True:
 			# establish connection with client.
@@ -63,7 +63,7 @@ class client:
 
 def strip_xml(packet):
 	# remove <?xml version="1.0" encoding="UTF-8"?>
-	match = re.search('^<\?xml[^>]+\?>(.*)$', packet, re.DOTALL)
+	match = re.search('^<\\?xml[^>]+\\?>(.*)$', packet, re.DOTALL)
 	if match:
 		packet = match.group(1)
 	

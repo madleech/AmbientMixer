@@ -2,3 +2,6 @@
 converted/
 sounds/
 json/
+venv/
+__pycache__/
+*.bak

@@ -6,18 +6,17 @@ import cgi
 import sys
 import json
 import logging
-import BaseHTTPServer
-
+import http.server
 
 # decode HTTP posts
-class PostHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+class PostHandler(http.server.BaseHTTPRequestHandler):
 	def do_GET(self):
 		basedir = os.path.dirname(os.path.realpath(__file__))
 		
 		if self.path == "/":
 			self.path = "/index.html"
 		
-		match = re.search('^(.+)\?', self.path)
+		match = re.search('^(.+)\\?', self.path)
 		if match:
 			self.path = match.group(1)
 		
@@ -52,9 +51,9 @@ class PostHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 				sendReply = True
 			
 			if sendReply == True:
-				print '-> GET {}'.format(self.path)
+				print('➝ GET {}'.format(self.path))
 				#Open the static file requested and send it
-				f = open(os.sep.join([basedir, 'gui', self.path]))
+				f = open(os.sep.join([basedir, 'gui', self.path]), "rb")
 				self.send_response(200)
 				self.send_header('Content-type', mimetype)
 				self.end_headers()
@@ -89,7 +88,7 @@ class PostHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			json_data = form['json'].value
 			
 			# is a file upload too?
-			if (form.has_key('file')):
+			if ('file' in form):
 				files = form['file']
 				if isinstance(files, list) == False:
 					files = [files]
@@ -97,7 +96,7 @@ class PostHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 					if (file.filename):
 						# place file into sounds dir under its filename
 						filename = file.filename
-						print "-> file uploaded to {}/{}".format(os.getcwd(), filename)
+						print("-> file uploaded to {}/{}".format(os.getcwd(), filename))
 						fp = open(filename, 'wb')
 						while True:
 							chunk = file.file.read(8192)
@@ -110,7 +109,7 @@ class PostHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		# not a form style post, so just get raw data
 		else:
 			# get JSON
-			content_len = int(self.headers.getheader('content-length', 0))
+			content_len = int(self.headers['content-length'])
 			json_data = self.rfile.read(content_len)
 		
 		# begin response
@@ -118,7 +117,7 @@ class PostHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 		self.send_header('Access-Control-Allow-Origin', '*')
 		self.end_headers()
 		
-		print '-> {}'.format(json_data)
+		print('-> {}'.format(json_data))
 		
 		# decode packet
 		target, method, name, args = self.server.decode(json_data)
@@ -130,7 +129,7 @@ class PostHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 			result = {'error': str(e)}
 		
 		# return response, close connection with client
-		self.wfile.write(json.dumps(result, sort_keys=True, indent=4, separators=(',', ': ')))
+		self.wfile.write(json.dumps(result, sort_keys=True, indent=4, separators=(',', ': ')).encode('utf-8'))
 	
 	def log_message(self, format, *args):
 		return
@@ -146,13 +145,13 @@ class http_server:
 		self.config_manager = config_manager
 	
 	def listen(self):
-		server = BaseHTTPServer.HTTPServer(('0.0.0.0', self.port), PostHandler)
+		server = http.server.HTTPServer(('0.0.0.0', self.port), PostHandler)
 		# set up callbacks for processing from handler
 		server.sequencer = self.sequencer
 		server.decode = self.decode
 		server.dispatch = self.dispatch
 		# start server
-		print u'✓ HTTP server listening on port {}'.format(self.port).encode('utf-8')
+		print('✓ HTTP server listening on port {}'.format(self.port))
 		server.serve_forever()
 	
 	# packet format: {method:<method>, target:<sequencer, sound, background_sound>, [name:sound name], args:[args]}
@@ -161,8 +160,8 @@ class http_server:
 		data   = json.loads(packet)
 		target = data['target']
 		method = data['method']
-		name   = data['name'] if data.has_key('name') else None
-		args   = data['args'] if data.has_key('args') else None
+		name   = data['name'] if 'name' in data else None
+		args   = data['args'] if 'args' in data else None
 		# except:
 			# method = target = name = args = None
 		
@@ -203,5 +202,5 @@ class http_server:
 		# catch any kind of dispatch error
 		except KeyError as e:
 			error = "No such key {} while dispatching method {} to target {}".format(e, method, target)
-			print e
+			print(e)
 			return {"error":error}

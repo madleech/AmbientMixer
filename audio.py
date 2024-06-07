@@ -67,7 +67,7 @@ class sound:
 		}
 	
 	def update_config(self, attributes):
-		for key, value in attributes.items():
+		for key, value in list(attributes.items()):
 			if key == 'filenames':
 				self._filenames = value
 			elif key == 'name':
@@ -108,7 +108,7 @@ class sound:
 		self._playing = True
 		self._started_at = time.time()
 		self._sound.set_volume(self.get_playback_vol())
-		print u'► {} ({})'.format(self._name, self._sound).encode('utf-8')
+		print('► {} ({})'.format(self._name, self._sound))
 		
 		if self._loop:
 			self._frequency = 0
@@ -200,7 +200,7 @@ class sound:
 	# if num > num_sounds, shuffle again and add to list, etc
 	def random_sound_orders(self, num):
 		result = []
-		indexes = xrange(0, len(self._sounds))
+		indexes = range(0, len(self._sounds))
 		rand_indexes = []
 		
 		while len(result) < num:
@@ -243,11 +243,11 @@ class sound:
 		if remaining_time < num_plays:
 			remaining_time = num_plays+1
 		# 4.2: assign random starting inside this list
-		times = random.sample(xrange(0, remaining_time), num_plays)
+		times = random.sample(range(0, remaining_time), num_plays)
 		# 4.3: sort times largest to smallest (so when we pop we get smallest time)
 		times.sort()
 		times.reverse()
-		print '  [{}] frequency: {} every {}s, total time: {}s, remaining time: {}s, times: {}, starting at {}'.format(self._name, self._frequency, self._period, total_time, remaining_time, times, time.strftime('%H:%M:%S', time.localtime(start)))
+		print('  [{}] frequency: {} every {}s, total time: {}s, remaining time: {}s, times: {}, starting at {}'.format(self._name, self._frequency, self._period, total_time, remaining_time, times, time.strftime('%H:%M:%S', time.localtime(start))))
 		
 		# 4.4: go through times, set each sound to start at this time, increase offset time by its length
 		offset = 0
@@ -300,7 +300,7 @@ class background_sound:
 	# MANAGE
 	
 	def update_config(self, attributes):
-		for key, value in attributes.items():
+		for key, value in list(attributes.items()):
 			if key == 'filename':
 				self._filename = value
 			elif key == 'name':
@@ -374,7 +374,7 @@ def convert_to_wav(filename, fade = False):
 			cmd = [script, filename, converted, "fade"]
 		else:
 			cmd = [script, filename, converted]
-		print 'Converting sound with: {}'.format(cmd)
+		print('Converting sound with: {}'.format(cmd))
 		subprocess.call(cmd)
 	
 	return converted

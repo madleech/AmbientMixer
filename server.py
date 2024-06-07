@@ -17,7 +17,7 @@ class tcp_server:
 		sock = socket.socket()
 		sock.bind(('', self.port))
 		sock.listen(5)
-		print 'TCP management server now listening on port {}'.format(self.port)
+		print('TCP management server now listening on port {}'.format(self.port))
 		
 		while True:
 			# establish connection with client.
@@ -68,7 +68,7 @@ class tcp_server:
 		# catch any kind of dispatch error
 		except:
 			e = sys.exc_info()[0]
-			print e
+			print(e)
 			return {"error", e[1]}
 	
 	# get data from socket, return as single big string
@@ -86,7 +86,7 @@ class tcp_server:
 			data   = json.loads(packet)
 			method = data[method]
 			target = data[target]
-			name   = data[name] if data.has_key('name') else None
+			name   = data[name] if 'name' in data else None
 			args   = data[args]
 		except:
 			method = target = name = args = None

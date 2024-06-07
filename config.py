@@ -27,7 +27,7 @@ class config:
 		fp = open(self.filename, 'w')
 		json.dump(self.get(), fp)
 		fp.close()
-		print u'✓ Saved configuration to {}'.format(self.filename).encode('utf-8')
+		print('✓ Saved configuration to {}'.format(self.filename))
 	
 	def periodic_save(self):
 		while True:
@@ -40,15 +40,15 @@ class config:
 	
 	# apply a config
 	def apply(self, settings):
-		if settings.has_key("name"):
+		if "name" in settings:
 			self._name = settings['name']
 		
 		# configure sequencer
-		if settings.has_key("sounds"):
+		if "sounds" in settings:
 			self.sequencer.setup_sounds(settings['sounds'])
-		if settings.has_key("background_sounds"):
+		if "background_sounds" in settings:
 			self.sequencer.setup_background_sounds(settings['background_sounds'])
-		if settings.has_key("mappings"):
+		if "mappings" in settings:
 			self.sequencer.setup_mappings(settings['mappings'])
 		
 		# success
@@ -62,9 +62,9 @@ class config:
 			"mappings":[]
 		}
 		# configure sequencer
-		for key, sound in self.sequencer.sounds.items():
+		for key, sound in list(self.sequencer.sounds.items()):
 			data['sounds'].append(sound.get_config())
-		for key, sound in self.sequencer.background_sounds.items():
+		for key, sound in list(self.sequencer.background_sounds.items()):
 			data['background_sounds'].append(sound.get_config())
 		
 		# configure UBUS server

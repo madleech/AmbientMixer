@@ -47,17 +47,17 @@ class ubus_listener:
 		
 		# otherwise try on TCP
 		except Exception as e:
-			print 'Exception caught while running server: {}'.format(e)
+			print('Exception caught while running server: {}'.format(e))
 	
 	# listen for UBUS packets and dispatch to sequencer
 	def listen_udp(self):
-		print 'Starting UDP listener on port {}'.format(self.port)
+		print('➝ Starting UDP listener on port {}'.format(self.port))
 		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		try:
 			sock.bind(('', self.port))
-			print u'✓ UDP UBUS now listening on port {}'.format(self.port).encode('utf-8')
+			print('✓ UDP UBUS now listening on port {}'.format(self.port))
 		except Exception as e:
-			print 'Exception caught while starting UDP listener: {}'.format(e)
+			print('Exception caught while starting UDP listener: {}'.format(e))
 			return False
 		
 		while True:
@@ -69,10 +69,10 @@ class ubus_listener:
 	
 	# listen for UBUS packets and dispatch to sequencer
 	def listen_tcp(self):
-		print 'Connecting to TCP UBUS server on localhost:{}'.format(self.port)
+		print('➝ Connecting to TCP UBUS server on localhost:{}'.format(self.port))
 		sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		sock.connect(('localhost', self.port))
-		print '✓ Connected to TCP UBUS server on port {}'.format(self.port).encode('utf-8')
+		print('✓ Connected to TCP UBUS server on port {}'.format(self.port))
 		
 		while True:
 			# establish connection with client.
@@ -131,7 +131,7 @@ class ubus_listener:
 def a_to_double(anything):
 	if isinstance(anything, int):
 		return anything
-	elif "0x" in anything and anything.index("0x") is 0:
+	elif "0x" in anything and anything.index("0x") == 0:
 		return int(anything, 16)
 	else:
 		return int(anything, 10)
@@ -153,7 +153,7 @@ def send(data):
 	sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 	sock.sendto(data, ('255.255.255.255', 5550))
 	sock.close()
-	print " -> {}".format(data)
+	print(" -> {}".format(data))
 
 
 # split a string into doubles

@@ -1,6 +1,6 @@
 import os
 import sys
-import http
+import web
 import ubus
 import time
 import audio
@@ -36,7 +36,7 @@ try:
 	config_manager = config(sequencer=seq, filename=config_file)
 	
 	# create HTTP management interface
-	http_server = http.http_server(port=9988, sequencer=seq, config_manager=config_manager)
+	http_server = web.http_server(port=9988, sequencer=seq, config_manager=config_manager)
 	
 	# connect to RocRail and listen for xml events
 	rocrail_client = rocrail.client(sequencer=seq, host=os.getenv('ROCRAIL_HOST', 'localhost'))
